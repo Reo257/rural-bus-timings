@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#067a5b">
+<title>Rural Bus Timings</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <div class="brand">
+      <span class="brand__icon" aria-hidden="true">🚌</span>
+      <div>
+        <h1 id="areaName">Rural Bus Timings</h1>
+        <p id="areaSub" class="brand__sub"></p>
+      </div>
+    </div>
+    <div class="clock">
+      <span id="clockTime" class="clock__time">--:--</span>
+      <span id="clockDay" class="clock__day"></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="panel" aria-label="Search and filters">
+    <div class="searchbar">
+      <span class="searchbar__icon" aria-hidden="true">🔍</span>
+      <input id="search" type="search" autocomplete="off"
+             placeholder="Search a bus stop, landmark or route…"
+             aria-label="Search bus stops">
+      <button id="clearSearch" class="searchbar__clear" type="button" aria-label="Clear search" hidden>×</button>
+    </div>
+
+    <div class="filters">
+      <div class="chips" id="routeChips" role="group" aria-label="Filter by route"></div>
+    </div>
+
+    <div class="filters filters--row">
+      <label class="toggle">
+        <input type="checkbox" id="sortByTime" checked>
+        <span>Show stops by next departure</span>
+      </label>
+      <div class="daypick" role="group" aria-label="Timetable day">
+        <button type="button" class="daypick__btn is-active" data-day="auto">Auto</button>
+        <button type="button" class="daypick__btn" data-day="weekday">Mon–Sat</button>
+        <button type="button" class="daypick__btn" data-day="sunday">Sunday</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel panel--next" aria-live="polite" aria-label="Upcoming departures from all stops">
+    <h2 class="panel__title">Leaving soon</h2>
+    <ul id="soonList" class="soon"></ul>
+  </section>
+
+  <div class="layout">
+    <section class="panel" aria-label="Bus stops">
+      <h2 class="panel__title">Bus stops <span id="stopCount" class="muted"></span></h2>
+      <div id="stopList" class="stops"></div>
+    </section>
+
+    <section class="panel panel--detail" aria-label="Stop details" id="detailPanel">
+      <div id="detail" class="detail"></div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <p id="areaHint"></p>
+    <p class="muted">Timings are indicative. Buses in rural areas can run late — reach the stop a few minutes early.</p>
+  </footer>
+</main>
+
+<button type="button" class="fab" id="fabAdd">
+  <span class="fab__plus" aria-hidden="true">＋</span>
+  <span class="fab__text">Report a timing</span>
+</button>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet__scrim" data-close></div>
+
+  <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet__head">
+      <h2 id="sheetTitle">Report a bus timing</h2>
+      <button type="button" class="sheet__close" data-close aria-label="Close">×</button>
+    </div>
+
+    <div class="sheet__body">
+      <p class="sheet__note" id="storeNote"></p>
+
+      <form id="reportForm" novalidate>
+        <label class="field">
+          <span class="field__label">Route</span>
+          <select id="fRoute"></select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Which way is it going?</span>
+          <select id="fDir"></select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Bus stop</span>
+          <select id="fStop"></select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Time the bus leaves this stop</span>
+          <input id="fTime" type="time" required>
+        </label>
+
+        <div class="field">
+          <span class="field__label">Runs on</span>
+          <div class="daytap-row" role="group" aria-label="Which days does it run">
+            <button type="button" class="daytap is-active" data-day="weekday">Mon–Sat</button>
+            <button type="button" class="daytap" data-day="sunday">Sunday</button>
+          </div>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Your name <span class="muted">(optional)</span></span>
+          <input id="fName" type="text" autocomplete="name" placeholder="Helps others trust the timing">
+        </label>
+
+        <label class="field">
+          <span class="field__label">Anything to add? <span class="muted">(optional)</span></span>
+          <input id="fNote" type="text" placeholder="e.g. only on school days">
+        </label>
+
+        <p class="formmsg" id="fMsg" hidden></p>
+
+        <button type="submit" class="btn btn--primary" id="fSubmit">Send report</button>
+      </form>
+
+      <div id="myReports"></div>
+      <button type="button" class="btn btn--ghost" id="copyReports" hidden>Copy my reports</button>
+
+      <p class="sheet__warn">
+        Reported timings are checked before they enter the timetable. Until then they
+        appear separately and are marked unverified — don't plan a trip around them.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="store.js"></script>
+<script src="app.js"></script>
+<script src="submit.js"></script>
+</body>
+</html>
