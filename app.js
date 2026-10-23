@@ -1,4 +1,4 @@
-/* ===== Rural Bus Timings — app logic =====================================
+﻿/* ===== Rural Bus Timings — app logic =====================================
    Reads STOPS / ROUTES / SCHEDULE from data.js (plain globals, so the page
    also works when opened directly from disk).
    ======================================================================== */
@@ -19,14 +19,7 @@
   var routeById = {};
   ROUTES.forEach(function (r) { routeById[r.id] = r; });
 
-  /* The timetable is the seed from data.js plus whatever passengers have
-     reported. `submittedRows` are reports good enough to show in the
-     timetable; `pendingRows` are still awaiting a check and are listed
-     separately so nobody mistakes them for an official time. */
-  var submittedRows = [];
-  var pendingRows = [];
-
-  function allRows() { return SCHEDULE.concat(submittedRows); }
+  function allRows() { return SCHEDULE; }
 
   var routesByStop = {};
   function rebuildRoutesIndex() {
@@ -37,47 +30,6 @@
     });
   }
   rebuildRoutesIndex();
-
-  /* Turn a stored report into a timetable row. */
-  function toRow(rec) {
-    var route = routeById[rec.routeId];
-    var known = STOPS.some(function (s) { return s.id === rec.stopId; });
-    if (!route || !known) return null;
-    return {
-      id: rec.id,
-      stopId: rec.stopId,
-      routeId: rec.routeId,
-      routeName: route.name,
-      operator: 'Passenger report',
-      color: route.color,
-      direction: rec.direction || route.name,
-      dayType: rec.dayType === 'sunday' ? 'sunday' : 'weekday',
-      time: rec.time,
-      reported: true,
-      reporter: rec.submittedBy || '',
-      note: rec.note || ''
-    };
-  }
-
-  function badTime(t) { return !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(t || ''); }
-
-  function loadReports() {
-    return Store.list().then(function (rows) {
-      var live = [], waiting = [];
-      rows.forEach(function (rec) {
-        if (badTime(rec.time)) return;                 /* ignore junk */
-        var row = toRow(rec);
-        if (!row) return;
-        if (rec.status === 'pending') waiting.push(row); else live.push(row);
-      });
-      submittedRows = live;
-      pendingRows = waiting;
-      rebuildRoutesIndex();
-      renderAll();
-    }).catch(function (err) {
-      console.warn('Passenger reports could not be loaded:', err);
-    });
-  }
 
   var els = {
     areaName:  document.getElementById('areaName'),
@@ -194,7 +146,7 @@
         };
         groups.push(index[key]);
       }
-      index[key].times.push({ time: e.time, reported: !!e.reported, reporter: e.reporter || '' });
+      index[key].times.push({ time: e.time });
     });
     return groups;
   }
@@ -207,12 +159,6 @@
 
   function groupRows(stopId) { return groupBy(rowsAt(stopId, activeDayType())); }
 
-  /* reports still waiting for a check — shown apart from the real timetable */
-  function pendingGroups(stopId) {
-    return groupBy(pendingRows.filter(function (e) {
-      return e.stopId === stopId && e.dayType === activeDayType() && matchesRoute(e);
-    }).sort(byTime));
-  }
 
   function countdownClass(nd) {
     if (nd.tomorrow) return 'is-tom';
@@ -346,11 +292,6 @@
         '</div>' +
         '<div class="bignext__meta">' + esc(nd.entry.direction) + ' · ' +
           esc(nd.entry.operator) + ' · Route ' + esc(nd.entry.routeName) +
-          (nd.entry.reported
-            ? '<br><span class="repflag">✎ Passenger report' +
-              (nd.entry.reporter ? ' — ' + esc(nd.entry.reporter) : '') +
-              ' · not yet verified</span>'
-            : '') +
         '</div>' +
       '</div>';
     } else {
@@ -393,51 +334,16 @@
             var isNext = nd && !nd.tomorrow &&
                          nd.entry.time === t.time && nd.entry.direction === g.direction;
             var cls = isNext ? ' is-next' : (mins < cur ? ' is-past' : '');
-            if (t.reported) cls += ' is-reported';
             return '<span class="times__t' + cls + '"' +
-              (t.reported
-                ? ' title="Reported by a passenger' +
-                  (t.reporter ? ': ' + esc(t.reporter) : '') + ' — not an official timing"'
-                : '') +
               '>' + esc(t.time) +
-              (t.reported ? '<span class="times__flag" aria-hidden="true">✎</span>' : '') +
             '</span>';
           }).join('') + '</div>' +
         '</div>';
       }).join('');
 
-      if (groups.some(function (g) {
-        return g.times.some(function (t) { return t.reported; });
-      })) {
-        html += '<p class="legend">✎ reported by a passenger — not checked against an ' +
-                'official timetable. Treat with care.</p>';
-      }
     }
     html += '</div>';
 
-    /* reports still awaiting a check — deliberately kept out of the timetable */
-    var waiting = pendingGroups(stop.id);
-    if (waiting.length) {
-      var waitCount = waiting.reduce(function (n, g) { return n + g.times.length; }, 0);
-      html += '<div class="awaiting">' +
-        '<div class="listhead">Awaiting review <span class="muted">' + waitCount + '</span></div>' +
-        '<p class="awaiting__warn">Reported by passengers but not yet checked. ' +
-          'These are <strong>not</strong> included in the timetable above.</p>' +
-        waiting.map(function (g) {
-          return '<div class="ttgroup">' +
-            '<div class="ttgroup__head">' +
-              '<span class="ttgroup__dot" style="background:' + esc(g.color) + '"></span>' +
-              '<span>' + esc(g.direction) + '</span>' +
-            '</div>' +
-            '<div class="times">' + g.times.map(function (t) {
-              return '<span class="times__t is-pending"' +
-                (t.reporter ? ' title="Reported by ' + esc(t.reporter) + '"' : '') +
-              '>' + esc(t.time) + '</span>';
-            }).join('') + '</div>' +
-          '</div>';
-        }).join('') +
-      '</div>';
-    }
 
     els.detail.innerHTML = html;
   }
@@ -552,17 +458,6 @@
     });
   }
 
-  /* --------------------------------------------------------------- boot -- */
-  /* The only surface submit.js is allowed to touch, so it does not have to
-     reach inside this closure. */
-  window.RuralBus = {
-    getSelectedStop:  function () { return state.selectedStopId; },
-    getSelectedRoute: function () { return state.routeId; },
-    getDayType:       function () { return activeDayType(); }
-  };
-
-  document.addEventListener('rbt:reports-changed', function () { loadReports(); });
-
   function init() {
     els.areaName.textContent = AREA.name;
     els.areaSub.textContent = AREA.district;
@@ -585,10 +480,6 @@
     bind();
     updateClock();
     renderAll();
-
-    /* Show the seed timetable straight away, then fold in passenger reports
-       when they arrive. The page must be usable even if that request fails. */
-    loadReports();
 
     setInterval(tick, 1000);
   }
